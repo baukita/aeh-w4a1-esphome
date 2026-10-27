@@ -1,0 +1,5 @@
+# ESPHome build output and your own keys
+.esphome/
+secrets.yaml
+__pycache__/
+.DS_Store

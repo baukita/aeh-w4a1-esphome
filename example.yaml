@@ -1,0 +1,71 @@
+# LilyGO T-CAN485 in place of the AC's AEH-W4A1 Wi-Fi module.
+# See docs/hardware.md for the wiring and docs/frames.md for what gets sent.
+#
+# Board pins (LilyGO's pin map):
+#   GPIO22 RS-485 TX, GPIO21 RS-485 RX
+#   GPIO17 EN: high while sending, low while listening (the component drives it)
+#   GPIO19 SE: on at boot
+#   GPIO16: powers the RS-485 chip's 5 V boost, on at boot
+
+esphome:
+  name: hisense-ac
+  friendly_name: Hisense AC
+  on_boot:
+    priority: 600
+    then:
+      - output.turn_on: rs485_power
+      - output.turn_on: rs485_se
+
+esp32:
+  board: esp32dev
+
+external_components:
+  - source: github://baukita/aeh-w4a1-esphome@v1.0.0
+    components: [hisense_w4a1]
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # If the board is on another network segment than Home Assistant, mDNS
+  # won't find it; give its fixed address here so updates know where to go.
+  # use_address: 192.168.1.50
+  ap:
+    ssid: "Hisense AC Fallback"
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+output:
+  - platform: gpio
+    pin: GPIO16
+    id: rs485_power
+  - platform: gpio
+    pin: GPIO19
+    id: rs485_se
+
+uart:
+  id: ac_uart
+  tx_pin: GPIO22
+  rx_pin: GPIO21
+  baud_rate: 9600
+
+climate:
+  - platform: hisense_w4a1
+    name: None
+    uart_id: ac_uart
+    flow_control_pin: GPIO17
+    update_interval: 5s
+    display:
+      name: Display
+    link:
+      name: AC link
