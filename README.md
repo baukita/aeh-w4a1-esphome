@@ -58,7 +58,7 @@ pins and other boards that should work.
 
    ```yaml
    external_components:
-     - source: github://baukita/aeh-w4a1-esphome@v1.0.0
+     - source: github://baukita/aeh-w4a1-esphome@v1.1.0
        components: [hisense_w4a1]
    ```
 
@@ -78,6 +78,24 @@ the file:
 pip install pyaehw4a1==0.3.9
 python3 tools/gen_hisense_commands.py > components/hisense_w4a1/commands.h
 ```
+
+## Trying new frames
+
+To work out frames this component doesn't send yet, turn on `test_frames`. It's off by
+default:
+
+```yaml
+climate:
+  - platform: hisense_w4a1
+    # ...
+    test_frames: true
+```
+
+This adds an action to Home Assistant, `esphome.<device name>_send_test_frame`, that sends
+one update frame you type in hex. The AC beeps for every frame it sends, as for any other
+command. The option needs the `api:` component.
+[docs/frames.md](docs/frames.md#trying-a-frame-from-home-assistant) says what to type. Leave
+it off once you're done.
 
 ## Thanks
 

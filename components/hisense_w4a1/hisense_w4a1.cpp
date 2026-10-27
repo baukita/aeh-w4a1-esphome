@@ -67,6 +67,8 @@ static const uint8_t PRESET_ECO_OFF = 0x10;
 static const uint8_t PRESET_TURBO_ON = 0x0C;
 static const uint8_t PRESET_TURBO_OFF = 0x04;
 
+static const char *const TEST_FRAME = "test frame";
+
 using Body = std::array<uint8_t, CMD_LEN>;
 
 static Body body_of(const Command &cmd) {
@@ -158,6 +160,9 @@ void HisenseClimate::setup() {
     this->setpoints_ = {};
   this->mode = climate::CLIMATE_MODE_OFF;
   this->poll_wanted_ = true;
+#ifdef USE_HISENSE_W4A1_TEST_FRAMES
+  this->register_service(&HisenseClimate::send_test_frame, "send_test_frame", {"frame"});
+#endif
 }
 
 void HisenseClimate::update() { this->poll_wanted_ = true; }
@@ -228,7 +233,11 @@ void HisenseClimate::start_next_(uint32_t now) {
   if (!this->pending_.empty()) {
     const Outgoing out = std::move(this->pending_.front());
     this->pending_.pop_front();
-    ESP_LOGD(TAG, "Sending %s", out.name);
+    if (out.name == TEST_FRAME) {
+      ESP_LOGI(TAG, "Sending test frame: %s", format_hex_pretty(out.wire, ' ', false).c_str());
+    } else {
+      ESP_LOGD(TAG, "Sending %s", out.name);
+    }
     this->in_flight_is_status_ = false;
     this->in_flight_name_ = out.name;
     this->send_(out.wire.data(), out.wire.size(), now);
@@ -524,6 +533,25 @@ void HisenseClimate::set_display(bool on) {
   this->enqueue_(on ? CMD_DISPLAY_ON : CMD_DISPLAY_OFF);
   if (this->display_switch_ != nullptr)
     this->display_switch_->publish_state(on);
+}
+
+void HisenseClimate::send_test_frame(StringRef hex) {
+  for (const auto &out : this->pending_) {
+    if (out.name == TEST_FRAME) {
+      ESP_LOGW(TAG, "Test frame not sent: the previous one is still waiting to go out");
+      return;
+    }
+  }
+  std::vector<uint8_t> body;
+  const char *error = parse_test_frame(hex.c_str(), hex.size(), body);
+  if (error != nullptr) {
+    ESP_LOGW(TAG, "Test frame not sent: %s", error);
+    return;
+  }
+  Outgoing out{TEST_FRAME, {}};
+  const uint16_t checksum = encode_frame(body.data(), body.size(), out.wire);
+  ESP_LOGI(TAG, "Test frame queued, checksum %04X: %s", checksum, format_hex_pretty(body, ' ', false).c_str());
+  this->pending_.push_back(std::move(out));
 }
 
 void HisenseClimate::control(const climate::ClimateCall &call) {

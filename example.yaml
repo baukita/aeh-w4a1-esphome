@@ -20,7 +20,7 @@ esp32:
   board: esp32dev
 
 external_components:
-  - source: github://baukita/aeh-w4a1-esphome@v1.0.0
+  - source: github://baukita/aeh-w4a1-esphome@v1.1.0
     components: [hisense_w4a1]
 
 logger:
@@ -69,3 +69,6 @@ climate:
       name: Display
     link:
       name: AC link
+    # Adds a send_test_frame action in Home Assistant for working out new
+    # frames. Every frame it sends makes the AC beep. See docs/frames.md.
+    # test_frames: true

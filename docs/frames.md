@@ -164,6 +164,36 @@ kept in flash. Until a mode has been seen, a mode change keeps the current setpo
   status reports values pyaehw4a1 doesn't know.
 - The display is in status bit 169, not 170.
 
+## Trying a frame from Home Assistant
+
+With `test_frames: true` in the `climate:` entry, the board offers an action in Home Assistant
+called `esphome.<device name>_send_test_frame`. It's off by default and meant for working out
+frames the firmware doesn't send yet. Every frame it sends makes the AC beep.
+
+The action's one field, `frame`, is an update frame in hex, from the `F4 F5` up to but not
+including the checksum. That's 46 bytes for a normal update frame. Spaces, colons, commas and
+dashes between the bytes are ignored. The firmware adds the checksum, the `F4 F4` escaping and
+the `F4 FB` end marker. It refuses the frame, with a warning in the log, unless byte 2 is `00`,
+bytes 13 and 14 are `65 00`, and byte 4 is the number of bytes typed minus 5.
+
+For example, this is the do-nothing frame with byte 19 set to `31`, which sets 24 °C, on a
+device named `hisense-ac`:
+
+```yaml
+action: esphome.hisense_ac_send_test_frame
+data:
+  frame: >-
+    F4 F5 00 40 29 00 00 01 01 FE 01 00 00 65 00 00
+    00 00 00 31 00 00 00 04 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+A test frame waits in the same queue as every other command. It's sent once and never re-sent,
+and a status read 1.5 seconds later shows what the AC did. Only one test frame can wait at a
+time, so a second one sent before the first has gone out is refused. The log shows the frame and
+its checksum when it's queued, and the bytes as they go on the wire in a line starting with
+"Sending test frame".
+
 ## Seeing the frames yourself
 
 To log every frame on the bus, add this to the `uart:` block:

@@ -11,6 +11,11 @@
 #include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/preferences.h"
+#include "esphome/core/string_ref.h"
+
+#ifdef USE_HISENSE_W4A1_TEST_FRAMES
+#include "esphome/components/api/custom_api_device.h"
+#endif
 
 #include "commands.h"
 
@@ -49,7 +54,12 @@ struct ModeSetpoints {
   uint8_t temp[4];
 };
 
-class HisenseClimate : public climate::Climate, public PollingComponent, public uart::UARTDevice {
+class HisenseClimate : public climate::Climate,
+                       public PollingComponent,
+#ifdef USE_HISENSE_W4A1_TEST_FRAMES
+                       public api::CustomAPIDevice,
+#endif
+                       public uart::UARTDevice {
  public:
   HisenseClimate();
   void setup() override;
@@ -63,6 +73,12 @@ class HisenseClimate : public climate::Climate, public PollingComponent, public 
 
   /// Sends display_on or display_off. Called by the display switch.
   void set_display(bool on);
+
+  /// For testing frames pyaehw4a1 doesn't have. Takes an update frame as hex,
+  /// without its checksum and end marker (see frame.h), and queues it like any
+  /// other command: sent once, never re-sent. `test_frames: true` offers it to
+  /// Home Assistant as the send_test_frame action.
+  void send_test_frame(StringRef hex);
 
  protected:
   enum class Phase : uint8_t { IDLE, SENDING, WAITING };
